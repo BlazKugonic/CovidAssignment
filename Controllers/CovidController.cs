@@ -15,6 +15,7 @@ using CsvHelper.Configuration;
 using CsvHelper.Configuration.Attributes;
 using System.Globalization;
 using System.Collections;
+using System.Net;
 
 namespace CovidAssignment.Controllers
 {
@@ -34,7 +35,7 @@ namespace CovidAssignment.Controllers
             {
                 HasHeaderRecord = true,
             };
-            using (var reader = new StreamReader(@".\region-cases.csv"))
+            using (var reader = new StreamReader(@".\file.csv"))
             using (var csv = new CsvReader(reader, CultureInfo.InvariantCulture))
 
             {
@@ -44,7 +45,41 @@ namespace CovidAssignment.Controllers
 
 
         }
+        //better way, get data online, save to csv
+        private static void GetDataOnline(string url)
+        {
+            //Save to file.csv
+            System.Net.WebClient client = new WebClient();
+            client.DownloadFile(url,"file.csv");
 
+            String path = @".\file.csv";
+            List<String> lines = new List<String>();
+            //ker so imena v obliki cases.lj.1st ---> spremenimo brez pik
+            if (path != "") ; 
+            {
+                using (StreamReader reader = new StreamReader(path))
+                {
+                    String line;
+
+                    while ((line = reader.ReadLine()) != null)
+                    {
+                        if (line.Contains(","))
+                        {
+                            String[] split = line.Split(',');
+                            //odstranitev pik
+                            line = line.Replace(".", String.Empty);
+                        }
+                        lines.Add(line);
+                    }
+                }
+                using (StreamWriter writer = new StreamWriter(path, false))
+                {
+                    foreach (String line in lines)
+                        writer.WriteLine(line);
+                }
+            }
+           
+        }
         private readonly ILogger<CovidController> _logger;
 
         public CovidController(ILogger<CovidController> logger)
@@ -55,13 +90,12 @@ namespace CovidAssignment.Controllers
         [HttpGet]
         public IActionResult MyAction()
         {
-
-            Getdata();
-
+            GetDataOnline("https://raw.githubusercontent.com/sledilnik/data/master/csv/region-cases.csv");
+            //Getdata();
             return Ok("Welcome to Covid API\n"+
                 "available apis:\n" +
-                "1. /region/cases (Region,From, To)\n" +
-                "2./region/lastweek");
+                "1. /region/cases (Region, From(01/01/2021), To(02/02/2021, username, password))\n" +
+                "2./region/lastweek (username, password)");
         }
         //pridobivanje datuma (yyyy/MM/DD) in regije 
         [HttpGet("region/cases")]
@@ -226,7 +260,7 @@ namespace CovidAssignment.Controllers
                     SG += item.regionsgcasesactive;
                     ZA += item.regionzacasesactive;
                     NG += item.regionngcasesactive;
-                    System.Diagnostics.Debug.WriteLine("LJ število aktivnih ", item.regionljcasesactive);
+                   // System.Diagnostics.Debug.WriteLine("LJ število aktivnih ", item.regionljcasesactive);
                 }
                 //System.Diagnostics.Debug.WriteLine("LJ število aktivnih ", LJ);
                 Izpis.Add((" sum of number of active cases LJ:", LJ));
@@ -241,6 +275,7 @@ namespace CovidAssignment.Controllers
                 Izpis.Add(("sum of number of active cases SG:", SG));
                 Izpis.Add(("sum of number of active cases ZA:", ZA));
                 Izpis.Add(("sum of number of active cases NG:", NG));
+                //padajoče
                 var newList = Izpis.OrderByDescending(x => x.Item2).ToList();
                 string temp;
                 foreach (var i in newList)
